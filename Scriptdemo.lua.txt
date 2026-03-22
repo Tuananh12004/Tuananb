@@ -1,4 +1,4 @@
--- DBU Auto Farm GUI Tự Tạo 2026 - Button Toggle
+-- DBU Auto Farm GUI Tự Tạo 2026 - HOÀN CHỈNH + FIXED
 -- Executor: Delta / Arceus X / Hydrogen (update mới nhất)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -7,48 +7,53 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "Auto Farm DBU 2026",
     LoadingSubtitle = "Tuan_codon",
     ConfigurationSaving = { Enabled = false },
-    KeySystem = false
+    KeySystem = false  -- Đã fix
 })
 
-local Tab = Window:CreateTab("Auto Farm", nil)  -- Tab chính
+local Tab = Window:CreateTab("Auto Farm", nil)
 
--- Variables config
+-- Variables
 getgenv().AutoFarm = false
 getgenv().AutoRebirth = false
 getgenv().AutoTransform = false
-getgenv().FarmSpeed = 0.1  -- Delay loop, chỉnh nhỏ để nhanh hơn
+getgenv().FarmSpeed = 0.1
+getgenv().FarmRange = 200
 
--- Toggle Button Auto Farm Mobs
+-- ==================== AUTO FARM MOBS ====================
 Tab:CreateToggle({
     Name = "Auto Farm Mobs / Quests",
     CurrentValue = false,
-    Flag = "AutoFarmToggle",
     Callback = function(Value)
         getgenv().AutoFarm = Value
-        Rayfield:Notify({
-            Title = "Auto Farm",
-            Content = Value and "BẬT - Auto kill & farm mobs đang chạy!" or "TẮT",
-            Duration = 1
-        })
+        Rayfield:Notify({Title = "Auto Farm", Content = Value and "BẬT - Đang farm mobs..." or "TẮT", Duration = 6})
         
         if Value then
             spawn(function()
                 local Player = game.Players.LocalPlayer
-                local HRP = Player.Character:WaitForChild("HumanoidRootPart")
-                
                 while getgenv().AutoFarm do
                     task.wait(getgenv().FarmSpeed)
-                    -- Tìm mobs (thường ở workspace.Mobs hoặc Enemies)
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                            if not game.Players:GetPlayerFromCharacter(obj) then  -- Chỉ NPC
+                    if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") or Player.Character.Humanoid.Health <= 0 then continue end
+                    
+                    local HRP = Player.Character.HumanoidRootPart
+                    local mobFolder = workspace:FindFirstChild("Mobs") or workspace:FindFirstChild("Enemies") or workspace:FindFirstChild("NPCs")
+                    local targets = mobFolder and mobFolder:GetDescendants() or workspace:GetDescendants()
+                    
+                    for _, obj in pairs(targets) do
+                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") and obj.Humanoid.Health > 0 then
+                            if not game.Players:GetPlayerFromCharacter(obj) then
                                 local dist = (obj.HumanoidRootPart.Position - HRP.Position).Magnitude
-                                if dist < 100 then  -- Range farm
-                                    HRP.CFrame = obj.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
-                                    obj.Humanoid:TakeDamage(99999)  -- Hoặc activate tool
+                                if dist <= getgenv().FarmRange then
+                                    HRP.CFrame = obj.HumanoidRootPart.CFrame * CFrame.new(0, 5, -5)
+                                    task.wait(0.05)
+                                    
+                                    for i = 1, 3 do
+                                        obj.Humanoid:TakeDamage(10000)
+                                        task.wait(0.03)
+                                    end
                                     if Player.Character:FindFirstChildOfClass("Tool") then
                                         Player.Character:FindFirstChildOfClass("Tool"):Activate()
                                     end
+                                    print("✅ Farm mob: " .. obj.Name .. " | Dist: " .. math.floor(dist))
                                 end
                             end
                         end
@@ -59,86 +64,99 @@ Tab:CreateToggle({
     end
 })
 
--- Toggle Button Auto Rebirth
+-- ==================== AUTO REBIRTH (remote thật từ DBU) ====================
 Tab:CreateToggle({
     Name = "Auto Rebirth",
     CurrentValue = false,
-    Flag = "AutoRebirthToggle",
     Callback = function(Value)
         getgenv().AutoRebirth = Value
-        Rayfield:Notify({
-            Title = "Auto Rebirth",
-            Content = Value and "BẬT - Rebirth tự động khi đủ!" or "TẮT",
-            Duration = 4
-        })
+        Rayfield:Notify({Title = "Auto Rebirth", Content = Value and "BẬT - Rebirth tự động!" or "TẮT", Duration = 5})
         
         if Value then
             spawn(function()
+                local rebirthRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Package") and game:GetService("ReplicatedStorage").Package:FindFirstChild("Events") and game:GetService("ReplicatedStorage").Package.Events:FindFirstChild("reb")
+                if not rebirthRemote then
+                    Rayfield:Notify({Title = "Lỗi", Content = "Không tìm thấy remote rebirth! Dùng Dex Explorer tìm thêm.", Duration = 6})
+                    return
+                end
+                
                 while getgenv().AutoRebirth do
-                    task.wait(1)  -- Check mỗi 1s
-                    -- Gọi remote rebirth (thay bằng remote thật của DBU nếu mày biết)
-                    -- Ví dụ: game.ReplicatedStorage.Rebirth:FireServer() hoặc tương tự
-                    print("Checking rebirth...")
-                    -- Nếu có UI rebirth, dùng fire click detector hoặc remote
+                    task.wait(3)
+                    rebirthRemote:InvokeServer()
+                    print("🔄 Rebirth called!")
                 end
             end)
         end
     end
 })
 
--- Toggle Button Auto Transform/Charge
+-- ==================== AUTO TRANSFORM & CHARGE (sim key) ====================
 Tab:CreateToggle({
     Name = "Auto Transform & Charge",
     CurrentValue = false,
-    Flag = "AutoTransformToggle",
     Callback = function(Value)
         getgenv().AutoTransform = Value
-        Rayfield:Notify({
-            Title = "Auto Transform",
-            Content = Value and "BẬT - Auto charge & transform!" or "TẮT",
-            Duration = 1
-        })
+        Rayfield:Notify({Title = "Auto Transform", Content = Value and "BẬT - Auto charge + transform!" or "TẮT", Duration = 5})
         
         if Value then
             spawn(function()
+                local vim = game:GetService("VirtualInputManager")
                 while getgenv().AutoTransform do
-                    task.wait(1)
-                    -- Logic charge/transform (thường remote hoặc key press sim)
-                    -- Ví dụ: game:GetService("VirtualInputManager"):SendKeyEvent(true, "E", false, game)  -- Charge nếu E
-                    print("Charging/Transforming...")
+                    task.wait(1.2)
+                    -- Charge (hold C)
+                    vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                    task.wait(0.8)
+                    vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                    
+                    -- Transform (G)
+                    vim:SendKeyEvent(true, Enum.KeyCode.G, false, game)
+                    task.wait(0.1)
+                    vim:SendKeyEvent(false, Enum.KeyCode.G, false, game)
+                    
+                    print("⚡ Auto Charge + Transform")
                 end
             end)
         end
     end
 })
 
--- Button Extra: Bật tất cả nhanh
+-- ==================== BUTTON + SLIDER ====================
 Tab:CreateButton({
     Name = "Bật Toàn Bộ Auto",
     Callback = function()
         getgenv().AutoFarm = true
         getgenv().AutoRebirth = true
         getgenv().AutoTransform = true
-        Rayfield:Notify({Title = "All Auto", Content = "Farm full tốc độ! Bật toggle nếu muốn chỉnh.", Duration = 1})
+        Rayfield:Notify({Title = "ALL ON!", Content = "Farm full tốc độ!", Duration = 5})
     end
 })
 
--- Slider chỉnh speed farm (nếu muốn tweak)
+Tab:CreateSlider({
+    Name = "Farm Range (Studs)",
+    Range = {50, 500},
+    Increment = 25,
+    Suffix = "Studs",
+    CurrentValue = 200,
+    Callback = function(Value)
+        getgenv().FarmRange = Value
+    end
+})
+
 Tab:CreateSlider({
     Name = "Farm Speed (Delay)",
-    Range = {0.1, 1},
-    Increment = 0.1,
+    Range = {0.05, 0.5},
+    Increment = 0.05,
     Suffix = "giây",
     CurrentValue = 0.1,
     Callback = function(Value)
         getgenv().FarmSpeed = Value
-        print("Farm speed updated: " .. Value)
     end
 })
 
+-- Load xong
 Rayfield:Notify({
-    Title = "Script Loaded!",
-    Content = "GUI Auto Farm DBU tự tạo sẵn! Bật button toggle để farm. Tweak code nếu cần bro!",
-    Duration = 1
+    Title = "Script HOÀN CHỈNH!",
+    Content = "GUI sẵn sàng! Bật toggle và check console F9 để debug. Farm ngon lành bro!",
+    Duration = 8
 })
-print("DBU Auto Farm GUI by Duyên Lưu - 2026")
+print("DBU Auto Farm GUI HOÀN CHỈNH by Duyên Lưu - 2026")
