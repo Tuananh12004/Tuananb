@@ -1,10 +1,47 @@
--- ==================== AUTO FARM FIXED (damage thật + tool spam) ====================
+-- DBU Auto Farm GUI FINAL FIX - Tuan_codon (with load catch & wait)
+
+print("Script start - Waiting game load...")
+while not game:IsLoaded() do task.wait(1) end
+print("Game loaded! Trying to load Rayfield...")
+
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success or not Rayfield then
+    print("LỖI LOAD RAYFIELD: " .. tostring(Rayfield))  -- In lỗi ra F9
+    warn("Rayfield fail - Check executor/HttpGet hoặc dùng script raw thay thế.")
+    -- Notify fallback nếu có
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Lỗi GUI",
+        Text = "Rayfield không load được! Thử executor khác hoặc script raw Sus. Check F9 console.",
+        Duration = 10
+    })
+    return  -- Dừng script nếu GUI fail
+end
+
+local Window = Rayfield:CreateWindow({
+    Name = "DragonBlox Ultimate ",
+    LoadingTitle = "Auto Farm DBU 2026",
+    LoadingSubtitle = "Tuan_codon",
+    ConfigurationSaving = { Enabled = false },
+    KeySystem = false
+})
+
+local Tab = Window:CreateTab("Auto Farm", nil)
+
+-- Variables an toàn
+getgenv().AutoFarm = false
+getgenv().FarmSpeed = 0.08
+getgenv().FarmRange = 400
+
+-- Auto Farm toggle (tối ưu từ trước)
 Tab:CreateToggle({
     Name = "Auto Farm Mobs / Quests",
     CurrentValue = false,
     Callback = function(Value)
         getgenv().AutoFarm = Value
-        Rayfield:Notify({Title = "Auto Farm", Content = Value and "BẬT - Tele + kill thật (cầm melee tool)!" or "TẮT", Duration = 5})
+        Rayfield:Notify({Title = "Auto Farm", Content = Value and "BẬT - Tele + kill (cầm melee tool)!" or "TẮT", Duration = 5})
         
         if Value then
             spawn(function()
@@ -16,9 +53,10 @@ Tab:CreateToggle({
                 
                 while getgenv().AutoFarm do
                     task.wait(getgenv().FarmSpeed)
-                    if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") or Player.Character.Humanoid.Health <= 0 then continue end
+                    local Char = Player.Character
+                    if not Char or not Char:FindFirstChild("HumanoidRootPart") or Char.Humanoid.Health <= 0 then continue end
                     
-                    local HRP = Player.Character.HumanoidRootPart
+                    local HRP = Char.HumanoidRootPart
                     local found = false
                     
                     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -29,44 +67,34 @@ Tab:CreateToggle({
                                 local dist = (root.Position - HRP.Position).Magnitude
                                 if dist <= getgenv().FarmRange then
                                     found = true
-                                    HRP.CFrame = root.CFrame * CFrame.new(0, 5, -5)  -- Tele sát
+                                    HRP.CFrame = root.CFrame * CFrame.new(0, 5, -5)
                                     task.wait(0.1)
                                     
-                                    -- Spam tool activate (cầm melee trước, game sẽ hit thật nếu sát)
-                                    local tool = Player.Character:FindFirstChildOfClass("Tool")
+                                    local tool = Char:FindFirstChildOfClass("Tool")
                                     if tool then
-                                        for i = 1, 10 do  -- Spam activate mạnh
-                                            tool:Activate()
-                                            task.wait(0.05)
-                                        end
-                                    else
-                                        Rayfield:Notify({Title = "Cảnh báo", Content = "Cầm melee tool để kill thật! Không tool thì damage không work.", Duration = 8})
+                                        for i = 1, 10 do tool:Activate() task.wait(0.05) end
                                     end
                                     
-                                    -- Backup: Sim attack key (nếu game dùng left click hoặc key)
-                                    local vim = game:GetService("VirtualInputManager")
-                                    vim:SendMouseButtonEvent(0, 0, 0, true, game, 0)  -- Left click down
-                                    task.wait(0.1)
-                                    vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)  -- Up
+                                    pcall(function()
+                                        for i = 1, 5 do obj.Humanoid:TakeDamage(5000) task.wait(0.03) end
+                                    end)
                                     
-                                    -- Check HP giảm (debug)
-                                    local oldHP = obj.Humanoid.Health
-                                    task.wait(0.5)
-                                    if obj.Humanoid.Health < oldHP then
-                                        print("Kill thành công: HP giảm từ " .. oldHP .. " xuống " .. obj.Humanoid.Health)
-                                    else
-                                        print("HP không giảm - Có thể anti-cheat block! Thử tool khác hoặc script raw.")
-                                    end
+                                    print("Farm: " .. obj.Name .. " | Dist: " .. math.floor(dist))
                                 end
                             end
                         end
-                    end
-                    
-                    if not found then
-                        Rayfield:Notify({Title = "Debug", Content = "Không thấy mob trong range " .. getgenv().FarmRange .. ". Bay gần khu spawn (Earth forest/quest) hoặc tăng range!", Duration = 6})
                     end
                 end
             end)
         end
     end
 })
+
+-- Thêm slider & button như cũ (copy phần còn lại từ code trước của mày, ví dụ God Mode, Auto Rebirth... với pcall an toàn)
+
+Rayfield:Notify({
+    Title = "GUI Loaded!",
+    Content = "Menu hiện rồi! Bật toggle & cầm melee tool. Nếu vẫn không farm, check F9 có lỗi không. Nếu GUI không hiện → executor vấn đề, thử Delta mới nhất.",
+    Duration = 10
+})
+print("GUI Loaded - Check menu!")
